@@ -16,3 +16,6 @@ cabal.sandbox.config
 /bundle/*.tar.gz
 /bundle/*.sha
 /bundle/zephyr
+
+# IntelliJ
+/.idea
