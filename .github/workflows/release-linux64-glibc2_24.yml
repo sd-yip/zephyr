@@ -1,0 +1,68 @@
+
+on:
+  push:
+    tags: ['**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: haskell:8.6.5@sha256:6ae86033bfa75027fc36a63bb69e7fa41d4e7df6ae4a78baeb77dafc94488d81
+
+    steps:
+      - run: |
+          cabal update && cabal install cabal-install-3.2.0.0
+          mkdir -p /root/.cabal/bin
+          ln -s /github/home/.cabal/bin/cabal /root/.cabal/bin
+
+      - uses: actions/checkout@v2
+      - run: |
+          apt-get update && apt-get install -y locales
+          echo 'en_US.UTF-8 UTF-8' >/etc/locale.gen
+          locale-gen
+          LC_ALL=en_US.UTF-8 bundle/build.sh Linux
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux.tar.gz
+          path: bundle/Linux.tar.gz
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux.sha
+          path: bundle/Linux.sha
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-20.04
+
+    steps:
+      - id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: true
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: Linux.tar.gz
+      - uses: actions/download-artifact@v2
+        with:
+          name: Linux.sha
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: Linux.tar.gz
+          asset_name: Linux.tar.gz
+          asset_content_type: application/zip
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: Linux.sha
+          asset_name: Linux.sha
+          asset_content_type: application/zip
